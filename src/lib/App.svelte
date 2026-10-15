@@ -7,6 +7,7 @@
 	import {
 		SIGNATURE_CORNERS,
 		imageFormat,
+		type AppearanceStyle,
 		type SignatureCorner
 	} from '#lib/pades-visible';
 	import {
@@ -19,6 +20,8 @@
 		type SignerCert
 	} from '#lib/sign';
 	import { signXades } from '#lib/xades';
+	import { stampPdf } from '#lib/stamp';
+	import SignaturePlacer from '#lib/components/SignaturePlacer.svelte';
 	import { verifyArtifact, type Bytes, type VerificationReport } from '#lib/verify';
 	import BatchQueue from '#lib/components/BatchQueue.svelte';
 	import CertPicker from '#lib/components/CertPicker.svelte';
@@ -65,6 +68,8 @@
 	import SunIcon from '@lucide/svelte/icons/sun';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import ImageIcon from '@lucide/svelte/icons/image';
+	import MoveIcon from '@lucide/svelte/icons/move';
 	import CircleHelpIcon from '@lucide/svelte/icons/circle-question-mark';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import PenLineIcon from '@lucide/svelte/icons/pen-line';
@@ -141,6 +146,10 @@
 	let visibleOn = $state(false);
 	let visiblePage = $state(1);
 	let visibleCorner = $state<SignatureCorner>('bottom-right');
+	/** Rectangle chosen in the placement editor (PDF points); null means "use the corner". */
+	let visibleRect = $state<[number, number, number, number] | null>(null);
+	let visibleStyle = $state<AppearanceStyle>('block');
+	let placerOpen = $state(false);
 	let visibleImage = $state<{ name: string; bytes: Uint8Array } | null>(null);
 	let visibleImageError = $state('');
 	let visibleImageInput = $state<HTMLInputElement | null>(null);
@@ -201,6 +210,14 @@
 
 	/** Format engines (#6 CAdES, #7 XAdES, #11 PAdES) plug in here; the queue never looks inside. */
 	function makeSigner(certificate: SignerCert | null, kind: SignFormat): BatchSigner | null {
+		if (kind === 'stamp') {
+			// No certificate: the picture of the signature is drawn on the page, nothing is signed.
+			const image = visibleImage?.bytes;
+			if (!image) return null;
+			const page = Math.max(0, visiblePage - 1);
+			const rect = visibleRect ?? undefined;
+			return async (_file, bytes) => ({ bytes: await stampPdf(bytes, { page, rect, image }) });
+		}
 		if (!certificate?.key || !certificate.algorithm) return null;
 		const algorithm = signingAlgorithmName(certificate);
 		const { key, der, commonName } = certificate;
@@ -240,7 +257,10 @@
 							? {
 									page: Math.max(0, visiblePage - 1),
 									corner: visibleCorner,
+									rect: visibleRect ?? undefined,
 									image: visibleImage?.bytes,
+									// Image-only needs an image; without one the block keeps the text.
+									style: visibleImage ? visibleStyle : 'block',
 									lines: [commonName, `${t.signedOn} ${signedOnLabel(signingTime)}`]
 								}
 							: undefined
@@ -278,14 +298,25 @@
 	const currentFormat = $derived(SIGN_FORMATS.find((option) => option.id === format)!);
 
 	const signer = $derived(makeSigner(cert, format));
+	/** First PDF of the batch: the page the placement editor previews. */
+	const previewPdf = $derived(
+		files.find((file) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) ?? null
+	);
+	const formatLabel = (option: { id: SignFormat; label: string }) =>
+		option.id === 'stamp' ? t.stampFormatLabel : option.label;
+
 	const signHint = $derived(
 		files.length === 0
 			? t.signNeedsFile
-			: cert === null
-				? t.signNeedsCert
-				: signer === null
-					? t.signPendingFormat
+			: format === 'stamp'
+				? visibleImage === null
+					? t.signNeedsImage
 					: ''
+				: cert === null
+					? t.signNeedsCert
+					: signer === null
+						? t.signPendingFormat
+						: ''
 	);
 
 	let verifyFile = $state<SelectedFile | null>(null);
@@ -392,6 +423,102 @@
 		</span>
 		<span class="font-display">{title}</span>
 	</h2>
+{/snippet}
+
+
+<!-- Signature image, appearance and position: shared by the visible PAdES block and the stamp. -->
+{#snippet placementFields(withStyle: boolean)}
+	<div class="flex flex-wrap items-center gap-2">
+		<input
+			bind:this={visibleImageInput}
+			class="sr-only"
+			type="file"
+			accept="image/png,image/jpeg"
+			aria-label={t.visibleImage}
+			onchange={(event) => pickSignatureImage(event.currentTarget.files?.[0])}
+		/>
+		<Button variant="outline" size="sm" onclick={() => visibleImageInput?.click()}>
+			<ImageIcon class="size-4" aria-hidden="true" />
+			{t.visibleImageChoose}
+		</Button>
+		{#if visibleImage}
+			<span class="text-muted-foreground text-xs">
+				{visibleImage.name} · {formatBytes(visibleImage.bytes.length)}
+			</span>
+			<Button variant="ghost" size="sm" onclick={() => (visibleImage = null)}>
+				{t.remove}
+			</Button>
+		{/if}
+	</div>
+	{#if visibleImageError}
+		<p class="text-destructive text-xs" role="alert">{visibleImageError}</p>
+	{/if}
+
+	{#if withStyle && visibleImage}
+		<div class="flex flex-col gap-1">
+			<span id="visible-style" class="text-xs font-medium">{t.visibleStyleLabel}</span>
+			<div class="grid grid-cols-2 gap-1" role="group" aria-labelledby="visible-style">
+				{#each [{ id: 'block' as const, label: t.visibleStyleBlock }, { id: 'image' as const, label: t.visibleStyleImage }] as option (option.id)}
+					<Button
+						variant={visibleStyle === option.id ? 'default' : 'outline'}
+						size="sm"
+						aria-pressed={visibleStyle === option.id}
+						onclick={() => (visibleStyle = option.id)}
+					>
+						{option.label}
+					</Button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<div class="flex flex-col gap-2 rounded-lg border p-3">
+		<Button
+			variant="secondary"
+			class="w-full"
+			disabled={previewPdf === null}
+			onclick={() => (placerOpen = true)}
+		>
+			<MoveIcon class="size-4" aria-hidden="true" />
+			{t.placeButton}
+		</Button>
+		{#if previewPdf === null}
+			<p class="text-muted-foreground text-xs">{t.placeNeedsPdf}</p>
+		{/if}
+		{#if visibleRect}
+			<div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+				<span class="text-primary flex items-center gap-1.5 font-medium">
+					<CheckIcon class="size-3.5" aria-hidden="true" />
+					{t.placeCustom} {visiblePage}
+				</span>
+				<Button variant="ghost" size="sm" class="h-7" onclick={() => (visibleRect = null)}>
+					{t.placeReset}
+				</Button>
+			</div>
+		{:else}
+			<div class="flex flex-wrap items-end gap-4">
+				<div class="flex flex-col gap-1">
+					<label for="visible-page" class="text-xs font-medium">{t.visiblePage}</label>
+					<Input id="visible-page" type="number" min="1" class="w-20" bind:value={visiblePage} />
+				</div>
+				<div class="flex flex-col gap-1">
+					<span id="visible-corner" class="text-xs font-medium">{t.visibleCorner}</span>
+					<div class="grid grid-cols-2 gap-1" role="group" aria-labelledby="visible-corner">
+						{#each SIGNATURE_CORNERS as corner (corner)}
+							<Button
+								variant={visibleCorner === corner ? 'default' : 'outline'}
+								size="sm"
+								aria-pressed={visibleCorner === corner}
+								onclick={() => (visibleCorner = corner)}
+							>
+								{t.visibleCorners[corner]}
+							</Button>
+						{/each}
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
 {/snippet}
 
 <TooltipProvider>
@@ -592,7 +719,7 @@
 									onclick={() => (formatOpen = true)}
 								>
 									<span class="flex min-w-0 items-center gap-3">
-										<span class="font-medium">{currentFormat.label}</span>
+										<span class="font-medium">{formatLabel(currentFormat)}</span>
 										<span class="text-muted-foreground tnum text-sm"
 											>{currentFormat.extension}</span
 										>
@@ -617,71 +744,21 @@
 										</label>
 										<Switch id="visible-signature" bind:checked={visibleOn} />
 									</div>
-
 									{#if visibleOn}
-										<div class="flex flex-wrap items-center gap-2">
-											<input
-												bind:this={visibleImageInput}
-												class="sr-only"
-												type="file"
-												accept="image/png,image/jpeg"
-												aria-label={t.visibleImage}
-												onchange={(event) => pickSignatureImage(event.currentTarget.files?.[0])}
-											/>
-											<Button
-												variant="outline"
-												size="sm"
-												onclick={() => visibleImageInput?.click()}
-											>
-												{t.visibleImageChoose}
-											</Button>
-											{#if visibleImage}
-												<span class="text-muted-foreground text-xs">
-													{visibleImage.name} · {formatBytes(visibleImage.bytes.length)}
-												</span>
-												<Button variant="ghost" size="sm" onclick={() => (visibleImage = null)}>
-													{t.remove}
-												</Button>
-											{/if}
-										</div>
-										{#if visibleImageError}
-											<p class="text-destructive text-xs" role="alert">{visibleImageError}</p>
-										{/if}
-
-										<div class="flex flex-wrap items-end gap-4">
-											<div class="flex flex-col gap-1">
-												<label for="visible-page" class="text-xs font-medium">{t.visiblePage}</label>
-												<Input
-													id="visible-page"
-													type="number"
-													min="1"
-													class="w-20"
-													bind:value={visiblePage}
-												/>
-											</div>
-											<div class="flex flex-col gap-1">
-												<span id="visible-corner" class="text-xs font-medium">{t.visibleCorner}</span>
-												<div
-													class="grid grid-cols-2 gap-1"
-													role="group"
-													aria-labelledby="visible-corner"
-												>
-													{#each SIGNATURE_CORNERS as corner (corner)}
-														<Button
-															variant={visibleCorner === corner ? 'default' : 'outline'}
-															size="sm"
-															aria-pressed={visibleCorner === corner}
-															onclick={() => (visibleCorner = corner)}
-														>
-															{t.visibleCorners[corner]}
-														</Button>
-													{/each}
-												</div>
-											</div>
-										</div>
-										{/if}
-										</fieldset>
+										{@render placementFields(true)}
 									{/if}
+								</fieldset>
+							{:else if format === 'stamp'}
+								<!-- Signature image without a certificate: a picture on the page, not a signature. -->
+								<fieldset class="flex flex-col gap-3 border-t pt-4">
+									<legend class="sr-only">{t.stampFormatLabel}</legend>
+									<Alert class="border-amber-600/40 bg-amber-600/5 text-amber-900 dark:text-amber-200">
+										<TriangleAlertIcon class="size-4" aria-hidden="true" />
+										<AlertDescription class="text-xs">{t.stampNote}</AlertDescription>
+									</Alert>
+									{@render placementFields(false)}
+								</fieldset>
+							{/if}
 
 							{#if format === 'cades'}
 								<!-- Trusted timestamp (#43): collapsed until asked for — one click opens it. -->
@@ -887,7 +964,7 @@
 								formatOpen = false;
 							}}
 						/>
-						<span class="font-medium">{option.label}</span>
+						<span class="font-medium">{formatLabel(option)}</span>
 						<span class="text-muted-foreground tnum text-sm">{option.extension}</span>
 						{#if !option.implemented}
 							<Badge variant="secondary" class="ms-auto">
@@ -899,4 +976,16 @@
 			</div>
 		</DialogContent>
 	</Dialog>
+	<SignaturePlacer
+		copy={t}
+		bind:open={placerOpen}
+		file={previewPdf}
+		image={visibleImage?.bytes ?? null}
+		page={visiblePage}
+		rect={visibleRect}
+		onapply={(page, rect) => {
+			visiblePage = page;
+			visibleRect = rect;
+		}}
+	/>
 </TooltipProvider>

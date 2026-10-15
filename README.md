@@ -44,6 +44,8 @@ pnpm build
 | `src/lib/xades.ts` | XAdES-EPES enveloped signature over an XML document |
 | `src/lib/pades.ts` | PAdES B-B signing: CMS `SignedData` over a real PDF incremental update |
 | `src/lib/pades-visible.ts` | Visible signature block: corner/page placement, image embedding, block text |
+| `src/lib/stamp.ts` | Signature image drawn on a PDF page without a certificate (not a signature) |
+| `src/lib/components/SignaturePlacer.svelte` | Placement editor: pdf.js page preview with a draggable, resizable signature |
 | `src/lib/der.ts` | Minimal DER writer/reader for the PAdES CMS structures |
 | `src/lib/batch.ts` | Batch queue state machine, manifest and ZIP assembly (engine-agnostic) |
 | `src/lib/zip.ts` | ZIP writer (STORE entries, CRC-32) — no dependency, verified by `unzip -t` |
@@ -358,6 +360,16 @@ invalidate the signature:
   plus text lines: the signer's CN and the signing date, wrapped rather than cut.
 - the sign panel exposes it as an off-by-default toggle with image upload, page number and corner
   picker; anything that is not a PNG/JPEG is rejected before the run starts.
+- **Colocar en el documento** [Place on the document] opens a preview of the first PDF of the batch
+  (pdf.js, legacy build so older webviews render it too, loaded only when the editor opens): drag
+  the signature, click to move it, resize it from its corner, change page. The box becomes an
+  explicit `rect` in PDF user space, so every document of the batch gets the same page and spot.
+- `style: 'image'` draws only the picture, fitted and centred, with no frame or text — a scanned
+  handwritten signature inside a real PAdES signature.
+
+**Signature image without a certificate** (format *Imagen de firma*, `src/lib/stamp.ts`): the same
+picture and placement, drawn straight onto the page with `pdf-lib`. Nothing is signed, so it needs
+no `.p12`; the panel says plainly that it is not a legally valid electronic signature.
 
 Scope: PAdES baseline **B-B**, or **B-T** with `options.timeStamp` (RFC 3161, see below). Encrypted
 inputs are rejected. The private key stays a WebCrypto `CryptoKey` in the browser.

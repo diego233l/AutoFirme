@@ -2,7 +2,8 @@ import type { Bytes } from './asn1';
 
 /** Domain types for the sign flow. Signature engines land in #6–#11; this file is the seam. */
 
-export type SignFormat = 'cades' | 'xades' | 'pades';
+/** `stamp` is not a signature: the picture of a handwritten signature drawn on a PDF, no certificate. */
+export type SignFormat = 'cades' | 'xades' | 'pades' | 'stamp';
 
 export interface SignFormatOption {
 	id: SignFormat;
@@ -17,7 +18,8 @@ export interface SignFormatOption {
 export const SIGN_FORMATS: readonly SignFormatOption[] = [
 	{ id: 'cades', label: 'CAdES-BES', extension: '.csig', issue: 6, implemented: true },
 	{ id: 'xades', label: 'XAdES-EPES', extension: '.xsig', issue: 7, implemented: true },
-	{ id: 'pades', label: 'PAdES-B-B', extension: '.pdf', issue: 11, implemented: true }
+	{ id: 'pades', label: 'PAdES-B-B', extension: '.pdf', issue: 11, implemented: true },
+	{ id: 'stamp', label: 'Imagen de firma', extension: '.pdf', issue: 0, implemented: true }
 ];
 
 export interface SelectedFile {

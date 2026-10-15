@@ -40,7 +40,15 @@ export interface VisibleSignatureOptions {
 	image?: ArrayBuffer | ArrayBufferView;
 	/** Text lines drawn in the block. Defaults to the signature's `/Name`. */
 	lines?: readonly string[];
+	/**
+	 * `block` (default): framed box with the image on the left and the text lines beside it.
+	 * `image`: only the signature image, fitted and centred in the rectangle, no frame or text —
+	 * a scanned handwritten signature placed on the page.
+	 */
+	style?: AppearanceStyle;
 }
+
+export type AppearanceStyle = 'block' | 'image';
 
 /** Rectangle of a corner block: `[x1, y1, x2, y2]` in PDF coordinates (origin bottom-left). */
 export function rectForCorner(
@@ -120,8 +128,14 @@ export function imageFormat(bytes: Bytes): keyof typeof raster | null {
 export async function buildAppearance(
 	document: PDFDocument,
 	rect: [number, number, number, number],
-	options: { lines: readonly string[]; image?: ArrayBuffer | ArrayBufferView }
+	options: {
+		lines: readonly string[];
+		image?: ArrayBuffer | ArrayBufferView;
+		style?: AppearanceStyle;
+	}
 ): Promise<Appearance> {
+	const imageOnly = options.style === 'image';
+	if (imageOnly && !options.image) throw new Error('an image-only signature needs an image');
 	const width = Math.abs(rect[2] - rect[0]);
 	const height = Math.abs(rect[3] - rect[1]);
 
@@ -140,12 +154,16 @@ export async function buildAppearance(
 		await embedded.embed();
 		imageRef = embedded.ref;
 
-		const box = { width: width * 0.38, height: height - 12 };
+		// Image-only fills the whole rectangle; the block keeps it in a left column beside the text.
+		const box = imageOnly
+			? { width, height }
+			: { width: width * 0.38, height: height - 12 };
 		const scale = Math.min(box.width / embedded.width, box.height / embedded.height);
 		const drawn = { width: embedded.width * scale, height: embedded.height * scale };
+		const x = imageOnly ? (width - drawn.width) / 2 : 6;
 		imageColumn = drawn.width + 12;
 		imageCommand =
-			`q ${drawn.width.toFixed(2)} 0 0 ${drawn.height.toFixed(2)} 6 ` +
+			`q ${drawn.width.toFixed(2)} 0 0 ${drawn.height.toFixed(2)} ${x.toFixed(2)} ` +
 			`${((height - drawn.height) / 2).toFixed(2)} cm /Im0 Do Q`;
 
 		const context = document.context;
@@ -156,6 +174,8 @@ export async function buildAppearance(
 			objects.push({ ref: mask, bytes: serializeObject(context.lookup(mask, PDFStream)) });
 		}
 	}
+
+	if (imageOnly) return { content: ['q', imageCommand, 'Q', ''].join('\n'), imageRef, objects };
 
 	const available = Math.max(width - imageColumn - 8, 8);
 	// Helvetica at 8 pt averages ~4.4 pt per character.
