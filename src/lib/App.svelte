@@ -57,6 +57,9 @@
 	import { TooltipProvider } from '#lib/components/ui/tooltip/index.js';
 	import { readMcp, saveMcp, type McpSettings } from '#lib/mcp';
 	import { applyTheme, readTheme, type Theme } from '#lib/theme';
+	import { openExternal } from '#lib/save-file';
+
+	const SOURCE_URL = 'https://github.com/Administracion-Abierta/AutoFirme';
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SunIcon from '@lucide/svelte/icons/sun';
@@ -497,8 +500,12 @@
 								{#snippet child({ props })}
 									<a
 										{...props}
-										href="https://github.com/Administracion-Abierta/AutoFirme"
+										href={SOURCE_URL}
 										target="_blank"
+										onclick={(event: MouseEvent) => {
+											(props.onclick as ((event: MouseEvent) => void) | undefined)?.(event);
+											void openExternal(event, SOURCE_URL);
+										}}
 										rel="noreferrer">{t.sourceCode}</a
 									>
 								{/snippet}

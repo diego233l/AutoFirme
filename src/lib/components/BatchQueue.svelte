@@ -14,6 +14,7 @@
 	} from '#lib/components/ui/tooltip/index.js';
 
 	import type { Copy } from '#lib/i18n';
+	import { saveFile } from '#lib/save-file';
 	interface Props {
 		copy: Copy;
 		queue: BatchQueue;
@@ -52,13 +53,8 @@
 		onsigned?.(done);
 	}
 
-	function save(name: string, bytes: Uint8Array<ArrayBuffer>, type: string) {
-		const url = URL.createObjectURL(new Blob([bytes], { type }));
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = name;
-		link.click();
-		URL.revokeObjectURL(url);
+	function save(name: string, bytes: Uint8Array, type: string) {
+		void saveFile(name, bytes, type);
 	}
 </script>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { saveFile } from '#lib/save-file';
 	import { StoreError, type OutputMeta, type Vault } from '#lib/certstore';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import type { Copy } from '#lib/i18n';
@@ -32,12 +33,7 @@
 	async function download(meta: OutputMeta) {
 		const bytes = await vault.readOutput(meta.id);
 		if (!bytes) return;
-		const url = URL.createObjectURL(new Blob([bytes], { type: meta.mime }));
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = meta.name;
-		link.click();
-		URL.revokeObjectURL(url);
+		await saveFile(meta.name, bytes, meta.mime);
 	}
 
 	async function remove(id: string) {

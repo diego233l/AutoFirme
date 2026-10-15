@@ -119,6 +119,32 @@ docker run --rm -p 8080:80 autofirme-web   # http://localhost:8080/
 Multi-stage: `node:22-alpine` builds the static site, `caddy:2-alpine` serves it with the SPA
 fallback (`try_files {path} {path}/ /404.html`).
 
+## Desktop app (Windows and macOS)
+
+The same static build also ships as a desktop app through [Tauri 2](https://tauri.app): the SPA runs
+in the system webview (WebView2 on Windows, WKWebView on macOS) and every signature is still made by
+the frontend's WebCrypto code. The native side (`src-tauri/`) only adds a "Save as" dialog, because a
+webview does not download `<a download>` links (`src/lib/save-file.ts` picks the path), and opens
+external links in the system browser. The service worker is not registered in the desktop build.
+
+| Platform | Output | Notes |
+|---|---|---|
+| Windows 10/11 | `AutoFirmaWeb-portable-*.exe` | Portable: a single executable, nothing to install. Uses the WebView2 runtime Windows already ships. |
+| macOS 11+ | `AutoFirma Web_*_universal.dmg` | Apple silicon and Intel. Unsigned: the first launch needs right click → **Open** (or `xattr -cr "/Applications/AutoFirma Web.app"`). |
+
+The **Escritorio** workflow (`.github/workflows/desktop.yml`) builds both on every push to `main`
+and every pull request, and uploads them as run artifacts; pushing a `v*` tag also attaches them to
+a draft release. Locally (Rust stable plus the [Tauri prerequisites](https://tauri.app/start/prerequisites/)):
+
+```bash
+pnpm desktop:dev                 # window over the vite dev server
+pnpm tauri build --no-bundle     # Windows: src-tauri/target/release/AutoFirmaWeb.exe
+pnpm tauri build --bundles dmg   # macOS: src-tauri/target/release/bundle/dmg/
+```
+
+App icons live in `src-tauri/icons/` (generated with `pnpm tauri icon` from `static/icon.svg` on a
+rounded tile).
+
 ## Installable app (PWA) — #47
 
 `pnpm build` emits `build/manifest.webmanifest` and `build/service-worker.js`, and the prerendered
