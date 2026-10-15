@@ -37,6 +37,10 @@ export interface Copy {
 	dragging: string;
 	remove: string;
 	step2Title: string;
+	/** Third step: the signing queue and its run button. */
+	step3Title: string;
+	/** Screen-reader label on a step marker once that step is complete. */
+	stepDone: string;
 	/** Trigger of the signature picker modal. */
 	selectSign: string;
 	/** Cell of that modal that opens the file dialog for a PKCS#12 from disk. */
@@ -155,13 +159,15 @@ export const copy: Record<Lang, Copy> = {
 		updateApp: 'Actualizar versión',
 		colFile: 'Fichero',
 		colActions: 'Acciones',
-		step1Title: '1. Elige los documentos',
+		step1Title: 'Elige los documentos',
 		dropTitle: 'Arrastra aquí los ficheros que quieres firmar',
 		dropHint: 'o selecciónalos desde tu equipo',
 		browse: 'Seleccionar ficheros',
 		dragging: 'Suelta el fichero para cargarlo',
 		remove: 'Quitar',
-		step2Title: '2. Configura la firma',
+		step2Title: 'Configura la firma',
+		step3Title: 'Firma',
+		stepDone: 'completado',
 		selectSign: 'Seleccionar firma',
 		addSign: 'Agregar firma',
 		certLoading: 'Descifrando el fichero…',
@@ -305,13 +311,15 @@ export const copy: Record<Lang, Copy> = {
 		updateApp: 'Update version',
 		colFile: 'File',
 		colActions: 'Actions',
-		step1Title: '1. Choose the documents',
+		step1Title: 'Choose the documents',
 		dropTitle: 'Drag the files you want to sign here',
 		dropHint: 'or pick them from your machine',
 		browse: 'Choose files',
 		dragging: 'Drop the file to load it',
 		remove: 'Remove',
-		step2Title: '2. Configure the signature',
+		step2Title: 'Configure the signature',
+		step3Title: 'Sign',
+		stepDone: 'done',
 		selectSign: 'Select signature',
 		addSign: 'Add signature',
 		certLoading: 'Decrypting the file…',

@@ -6,14 +6,15 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		// The sidebar-07 demo renders shadcn's sample data with "#" links; keep the SPA
-		// prerender strict for the real app but lenient for that demo page.
+		// Keep the SPA prerender strict: any broken link or missing page fails the build.
 		sveltekit({
 			adapter: adapter({ fallback: '404.html' }),
+			// The desktop app (Tauri sets TAURI_ENV_PLATFORM while building) ships its files inside
+			// the binary: an offline cache would only keep an old version alive after an update.
+			serviceWorker: process.env.TAURI_ENV_PLATFORM ? { register: false } : { register: true },
 			prerender: {
 				handleMissingId: ({ id }) => id.startsWith('/') || id === '',
 				handleHttpError: ({ path, message }) => {
-					if (path.startsWith('/sidebar-07') || path.includes('/avatars/')) return;
 					throw new Error(`prerender failed: ${path} ${message}`);
 				}
 			}

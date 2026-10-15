@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { saveFile } from '#lib/save-file';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Spinner } from '#lib/components/ui/spinner/index.js';
@@ -23,12 +24,7 @@
 	/** Saves the signature this row already holds in the queue — no re-signing, no fetch. */
 	function downloadSigned() {
 		if (!entry?.bytes) return;
-		const url = URL.createObjectURL(new Blob([entry.bytes], { type: 'application/octet-stream' }));
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = entry.output || `${file.name}.csig`;
-		link.click();
-		URL.revokeObjectURL(url);
+		void saveFile(entry.output || `${file.name}.csig`, entry.bytes, 'application/octet-stream');
 	}
 </script>
 
