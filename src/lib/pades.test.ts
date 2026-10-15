@@ -272,6 +272,35 @@ describe('PAdES B-B signing', () => {
 		);
 	});
 
+	it('draws only the image, placed where the user put it, and still verifies', async () => {
+		const signed = await signSource({
+			visible: { page: 0, rect: [300, 400, 420, 460], image: SIGNATURE_IMAGE, style: 'image' }
+		});
+		const extracted = await extractSignature(signed);
+
+		expect(
+			extracted.field
+				.lookup(PDFName.of('Rect'), PDFArray)
+				.asArray()
+				.map((entry) => (entry as PDFNumber).asNumber())
+		).toEqual([300, 400, 420, 460]);
+
+		const appearance = extracted.field.lookup(PDFName.of('AP'), PDFDict);
+		const form = extracted.document.context.lookup(
+			appearance.lookup(PDFName.of('N')) as PDFRef,
+			PDFStream
+		);
+		const content = new TextDecoder('latin1').decode(form.getContents());
+		// A 24×12 image in a 120×60 box scales ×5: 120×60, centred, no frame and no text.
+		expect(content).toContain('q 120.00 0 0 60.00 0.00 0.00 cm /Im0 Do Q');
+		expect(content).not.toContain(' re ');
+		expect(content).not.toContain('Tj');
+
+		expect(opensslVerify(trimTrailingZeros(extracted.contents), extracted.content)).toMatch(
+			/Verification successful/i
+		);
+	});
+
 	it('embeds an RFC 3161 timestamp that covers the signature value (PAdES B-T)', async () => {
 		const tsa = createTsaFixtures();
 		try {

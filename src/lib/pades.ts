@@ -326,7 +326,8 @@ export async function signPdf(
 	const appearance = visible
 		? await buildAppearance(document, rect, {
 				lines: visible.lines ?? [options.name ?? 'Firmado'],
-				image: visible.image
+				image: visible.image,
+				style: visible.style
 			})
 		: null;
 

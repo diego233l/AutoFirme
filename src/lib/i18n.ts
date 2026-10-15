@@ -70,6 +70,30 @@ export interface Copy {
 	visiblePage: string;
 	visibleCorner: string;
 	visibleCorners: Record<SignatureCorner, string>;
+	/** Appearance of the visible block: framed with name and date, or the bare image. */
+	visibleStyleLabel: string;
+	visibleStyleBlock: string;
+	visibleStyleImage: string;
+	/** Image-only stamp: a picture of the signature, with no certificate. */
+	stampFormatLabel: string;
+	stampNote: string;
+	signNeedsImage: string;
+	/** Placement editor over the PDF preview. */
+	placeButton: string;
+	placeNeedsPdf: string;
+	placeCustom: string;
+	placeReset: string;
+	placeTitle: string;
+	placeHint: string;
+	placePrev: string;
+	placeNext: string;
+	placeOf: string;
+	placeApply: string;
+	placeCancel: string;
+	placeLoading: string;
+	placeError: string;
+	placeBox: string;
+	placeResize: string;
 	/** Prefix of the block's date line. */
 	signedOn: string;
 	signButton: string;
@@ -210,6 +234,28 @@ export const copy: Record<Lang, Copy> = {
 		},
 		signedOn: 'Firmado el',
 		signButton: 'Firmar',
+		visibleStyleLabel: 'Aspecto',
+		visibleStyleBlock: 'Imagen, nombre y fecha',
+		visibleStyleImage: 'Solo la imagen',
+		stampFormatLabel: 'Imagen de firma',
+		stampNote:
+			'Pega la imagen de tu firma en el PDF sin certificado. Es cómodo, pero no es una firma electrónica con validez legal.',
+		signNeedsImage: 'Elige la imagen de tu firma para continuar.',
+		placeButton: 'Colocar en el documento',
+		placeNeedsPdf: 'Añade un PDF para elegir dónde va la firma.',
+		placeCustom: 'Posición elegida en la página',
+		placeReset: 'Usar una esquina',
+		placeTitle: 'Coloca tu firma',
+		placeHint: 'Arrastra la firma hasta su sitio o haz clic donde quieras ponerla. La esquina inferior cambia su tamaño.',
+		placePrev: 'Página anterior',
+		placeNext: 'Página siguiente',
+		placeOf: 'de',
+		placeApply: 'Aplicar',
+		placeCancel: 'Cancelar',
+		placeLoading: 'Abriendo el documento…',
+		placeError: 'No se ha podido abrir este PDF.',
+		placeBox: 'Firma: usa las flechas para moverla y Mayús + flechas para cambiar su tamaño',
+		placeResize: 'Cambiar tamaño',
 		signNeedsFile: 'Selecciona primero un documento.',
 		signNeedsCert: 'Selecciona un certificado para habilitar la firma.',
 		signPendingFormat: 'Este formato llegará en otra entrega.',
@@ -362,6 +408,28 @@ export const copy: Record<Lang, Copy> = {
 		},
 		signedOn: 'Signed on',
 		signButton: 'Sign',
+		visibleStyleLabel: 'Appearance',
+		visibleStyleBlock: 'Image, name and date',
+		visibleStyleImage: 'Image only',
+		stampFormatLabel: 'Signature image',
+		stampNote:
+			'Puts the picture of your signature on the PDF without a certificate. Handy, but it is not a legally valid electronic signature.',
+		signNeedsImage: 'Choose your signature image to continue.',
+		placeButton: 'Place on the document',
+		placeNeedsPdf: 'Add a PDF to choose where the signature goes.',
+		placeCustom: 'Chosen position on page',
+		placeReset: 'Use a corner',
+		placeTitle: 'Place your signature',
+		placeHint: 'Drag the signature into place or click where you want it. The bottom corner resizes it.',
+		placePrev: 'Previous page',
+		placeNext: 'Next page',
+		placeOf: 'of',
+		placeApply: 'Apply',
+		placeCancel: 'Cancel',
+		placeLoading: 'Opening the document…',
+		placeError: 'This PDF could not be opened.',
+		placeBox: 'Signature: arrow keys move it, Shift + arrow keys resize it',
+		placeResize: 'Resize',
 		signNeedsFile: 'Choose a document first.',
 		signNeedsCert: 'Choose a certificate to enable signing.',
 		signPendingFormat: 'This format ships in a later delivery.',
