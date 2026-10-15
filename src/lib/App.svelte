@@ -61,6 +61,11 @@
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SunIcon from '@lucide/svelte/icons/sun';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import CheckIcon from '@lucide/svelte/icons/check';
+	import CircleHelpIcon from '@lucide/svelte/icons/circle-question-mark';
+	import LockIcon from '@lucide/svelte/icons/lock';
+	import PenLineIcon from '@lucide/svelte/icons/pen-line';
+	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
 	import { onMount, type Snippet } from 'svelte';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 
@@ -187,6 +192,9 @@
 	// rendering the detailed result rows.
 	let batch = $state<BatchState>(EMPTY_BATCH_STATE);
 	$effect(() => queue.subscribe((value) => (batch = value)));
+	const allSigned = $derived(
+		batch.documents.length > 0 && batch.documents.every((entry) => entry.status === 'signed')
+	);
 
 	/** Format engines (#6 CAdES, #7 XAdES, #11 PAdES) plug in here; the queue never looks inside. */
 	function makeSigner(certificate: SignerCert | null, kind: SignFormat): BatchSigner | null {
@@ -363,68 +371,122 @@
 	</svg>
 {/snippet}
 
+<!-- Numbered step heading; the marker turns into a check once the step has what it needs. -->
+{#snippet stepHeading(number: number, title: string, done: boolean)}
+	<h2 class="flex items-center gap-3 text-lg font-semibold tracking-tight">
+		<span
+			class={[
+				'grid size-7 shrink-0 place-items-center rounded-full text-sm font-semibold transition-colors',
+				done ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary ring-primary/25 ring-1'
+			]}
+		>
+			{#if done}
+				<CheckIcon class="size-4" aria-hidden="true" />
+				<span class="sr-only">{number} ({t.stepDone})</span>
+			{:else}
+				{number}
+			{/if}
+		</span>
+		<span class="font-display">{title}</span>
+	</h2>
+{/snippet}
+
 <TooltipProvider>
-	<div
-		class="mx-auto flex h-dvh max-w-7xl flex-col gap-6 px-5 py-6 [--panel-offset:7.5rem] max-lg:h-auto max-lg:min-h-dvh"
-	>
-		<header class="flex flex-wrap items-start justify-between gap-4">
-			<div class="flex items-center gap-4">
-				{@render seal(44)}
-				<div>
-					<h1 class="font-display text-3xl font-semibold tracking-tight text-balance">
-						{t.brand}
-					</h1>
-					<p class="text-muted-foreground mt-1">{t.tagline}</p>
+	<div class="flex h-dvh flex-col max-lg:h-auto max-lg:min-h-dvh">
+		<!-- App bar: brand left, the two modes in the middle, preferences right. -->
+		<header
+			class="bg-background/80 supports-[backdrop-filter]:bg-background/65 sticky top-0 z-30 border-b backdrop-blur"
+		>
+			<div
+				class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-3"
+			>
+				<div class="flex min-w-0 items-center gap-3">
+					{@render seal(36)}
+					<div class="min-w-0">
+						<h1 class="font-display text-xl leading-tight font-semibold tracking-tight">
+							{t.brand}
+						</h1>
+						<p class="text-muted-foreground truncate text-xs max-sm:hidden">{t.tagline}</p>
+					</div>
 				</div>
-			</div>
-			<div class="flex flex-col items-end gap-2 text-sm">
-				<div class="flex flex-wrap items-center justify-end gap-2">
+
+				<div
+					class="bg-muted inline-flex items-center gap-1 rounded-full p-1 max-md:order-last max-md:w-full"
+					role="tablist"
+					aria-label={t.modesLabel}
+				>
+					{#each [{ id: 'sign' as const, label: t.modeSign, icon: PenLineIcon }, { id: 'verify' as const, label: t.modeVerify, icon: ShieldCheckIcon }] as tab (tab.id)}
+						{@const Icon = tab.icon}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={mode === tab.id}
+							aria-controls={`panel-${tab.id}`}
+							class={[
+								'focus-visible:ring-ring inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition-all focus-visible:ring-2 focus-visible:outline-none',
+								mode === tab.id
+									? 'bg-background text-foreground shadow-sm'
+									: 'text-muted-foreground hover:text-foreground'
+							]}
+							onclick={() => setMode(tab.id)}
+						>
+							<Icon class="size-4" aria-hidden="true" />
+							{tab.label}
+						</button>
+					{/each}
+				</div>
+
+				<div class="flex flex-wrap items-center justify-end gap-2 text-sm">
 					<PwaControls copy={t} />
 					<DownloadsDialog copy={t} {vault} />
 					<div
-						class="bg-muted inline-flex items-center gap-1 rounded-lg p-1"
+						class="bg-muted inline-flex items-center gap-0.5 rounded-full p-1"
 						role="group"
 						aria-label={t.themeLabel}
 					>
 						{#each THEMES as option (option.id)}
 							{@const Icon = option.icon}
 							<Button
-								variant={theme === option.id ? 'default' : 'ghost'}
+								variant={theme === option.id ? 'secondary' : 'ghost'}
 								size="icon"
-								class="size-8"
+								class={[
+									'size-7 rounded-full',
+									theme === option.id && 'bg-background text-foreground shadow-sm hover:bg-background'
+								]}
 								aria-pressed={theme === option.id}
 								aria-label={option.label}
 								onclick={() => (theme = option.id)}
 							>
-								<Icon class="size-4" />
+								<Icon class="size-3.5" />
 							</Button>
 						{/each}
 					</div>
 					<div
-						class="bg-muted inline-flex items-center gap-1 rounded-lg p-1"
+						class="bg-muted inline-flex items-center gap-0.5 rounded-full p-1"
 						role="group"
 						aria-label={t.langLabel}
 					>
-						<Button
-							variant={lang === 'es' ? 'default' : 'ghost'}
-							size="sm"
-							class="h-8 px-3"
-							aria-pressed={lang === 'es'}
-							onclick={() => (lang = 'es')}>ES</Button
-						>
-						<Button
-							variant={lang === 'en' ? 'default' : 'ghost'}
-							size="sm"
-							class="h-8 px-3"
-							aria-pressed={lang === 'en'}
-							onclick={() => (lang = 'en')}>EN</Button
-						>
+						{#each ['es', 'en'] as const as option (option)}
+							<Button
+								variant="ghost"
+								size="sm"
+								class={[
+									'h-7 rounded-full px-3 text-xs',
+									lang === option
+										? 'bg-background text-foreground hover:bg-background shadow-sm'
+										: 'text-muted-foreground'
+								]}
+								aria-pressed={lang === option}
+								onclick={() => (lang = option)}>{option.toUpperCase()}</Button
+							>
+						{/each}
 					</div>
 					<DropdownMenu>
 						<DropdownMenuTrigger>
 							{#snippet child({ props })}
-								<Button {...props} variant="ghost" size="sm" class="h-8 px-3">
-									{t.helpMenu}
+								<Button {...props} variant="ghost" size="sm" class="h-8 gap-1.5 rounded-full px-3">
+									<CircleHelpIcon class="size-4" aria-hidden="true" />
+									<span class="max-sm:sr-only">{t.helpMenu}</span>
 								</Button>
 							{/snippet}
 						</DropdownMenuTrigger>
@@ -435,7 +497,7 @@
 								{#snippet child({ props })}
 									<a
 										{...props}
-										href="https://git.eduard3v.com/EduarD3V/AutoFirme"
+										href="https://github.com/Administracion-Abierta/AutoFirme"
 										target="_blank"
 										rel="noreferrer">{t.sourceCode}</a
 									>
@@ -444,34 +506,12 @@
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
-				<div
-					class="bg-muted inline-flex items-center gap-1 rounded-lg p-1"
-					role="tablist"
-					aria-label={t.modesLabel}
-				>
-					<Button
-						role="tab"
-						aria-selected={mode === 'sign'}
-						aria-controls="panel-sign"
-						variant={mode === 'sign' ? 'default' : 'ghost'}
-						size="sm"
-						class="h-8 px-4"
-						onclick={() => setMode('sign')}>{t.modeSign}</Button
-					>
-					<Button
-						role="tab"
-						aria-selected={mode === 'verify'}
-						aria-controls="panel-verify"
-						variant={mode === 'verify' ? 'default' : 'ghost'}
-						size="sm"
-						class="h-8 px-4"
-						onclick={() => setMode('verify')}>{t.modeVerify}</Button
-					>
-				</div>
 			</div>
 		</header>
 
-		<main class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
+		<main
+			class="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 overflow-y-auto px-5 py-6"
+		>
 			{#if !secure}
 				<!-- Not an app fault: WebCrypto only exists in secure contexts. -->
 				<Alert class="border-amber-600/50 bg-amber-600/5 text-amber-800 dark:text-amber-300">
@@ -489,7 +529,7 @@
 					<!-- Left (2/3): drop zone and the documents waiting in the batch. -->
 					<Card class="flex min-h-0 flex-col overflow-hidden lg:col-span-2">
 						<CardHeader>
-							<h2 class="font-display text-xl font-semibold">{t.step1Title}</h2>
+							{@render stepHeading(1, t.step1Title, files.length > 0)}
 						</CardHeader>
 						<CardContent class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
 							<FileDrop copy={t} onselect={(picked) => (files = [...files, ...picked])} />
@@ -520,7 +560,7 @@
 					<!-- Upper right: signature config (certificate + format chooser). -->
 					<Card class="min-h-0 overflow-hidden">
 						<CardHeader>
-							<h2 class="font-display text-xl font-semibold">{t.step2Title}</h2>
+							{@render stepHeading(2, t.step2Title, cert !== null)}
 						</CardHeader>
 						<CardContent class="flex min-h-0 flex-col gap-4 overflow-y-auto">
 							<CertPicker
@@ -664,6 +704,9 @@
 
 					<!-- Bottom: the signing queue — its own height, never stretched by the row above. -->
 					<Card class="lg:col-span-3">
+						<CardHeader>
+							{@render stepHeading(3, t.step3Title, allSigned)}
+						</CardHeader>
 						<CardContent class="flex flex-col">
 							<BatchQueue
 								copy={t}
@@ -691,7 +734,7 @@
 						<!-- One signature at a time: this card steps aside while one is loaded. -->
 						<Card>
 							<CardHeader>
-								<h2 class="text-lg font-medium">{t.verifyStepTitle}</h2>
+								<h2 class="font-display text-lg font-semibold">{t.verifyStepTitle}</h2>
 							</CardHeader>
 							<CardContent class="flex flex-col gap-4">
 								<FileDrop
@@ -715,7 +758,7 @@
 						{#if needsDocument}
 							<Card>
 								<CardHeader>
-									<h2 class="text-lg font-medium">{t.verifyAddDocument}</h2>
+									<h2 class="font-display text-lg font-semibold">{t.verifyAddDocument}</h2>
 								</CardHeader>
 								<CardContent>
 									<FileDrop
@@ -730,7 +773,7 @@
 						{:else if detachedFile !== null}
 							<Card>
 								<CardHeader>
-									<h2 class="text-lg font-medium">{t.verifyDocumentLabel}</h2>
+									<h2 class="font-display text-lg font-semibold">{t.verifyDocumentLabel}</h2>
 								</CardHeader>
 								<CardContent>
 									<Table>
@@ -751,11 +794,13 @@
 			{/if}
 		</main>
 
-		<footer
-			class="text-muted-foreground flex items-center justify-between gap-4 border-t pt-3 text-sm"
-		>
-			<p class="truncate">{t.privacyNote}</p>
-			<div class="max-sm:hidden opacity-60">{@render seal(28)}</div>
+		<footer class="border-t">
+			<div
+				class="text-muted-foreground mx-auto flex max-w-7xl items-center gap-2 px-5 py-3 text-xs"
+			>
+				<LockIcon class="text-primary size-3.5 shrink-0" aria-hidden="true" />
+				<p class="truncate">{t.privacyNote}</p>
+			</div>
 		</footer>
 	</div>
 

@@ -86,6 +86,14 @@
 }
 
 /* Notaría-digital surface grammar: browsers ship defaults no design chose — theme them. */
+/* Tailwind v4 borders default to currentColor; every hairline here uses the theme's border token. */
+@layer base {
+	*,
+	::before,
+	::after {
+		border-color: var(--color-border);
+	}
+}
 body {
 	@apply bg-background text-foreground antialiased;
 }
